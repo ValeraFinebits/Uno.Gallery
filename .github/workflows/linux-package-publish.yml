@@ -1,0 +1,97 @@
+name: Linux Package Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      configuration:
+        description: 'Build configuration'
+        required: false
+        default: 'Release'
+        type: choice
+        options:
+          - Release
+          - Debug
+  release:
+    types: [published]
+
+jobs:
+  build_and_publish:
+    name: Build and Publish Linux Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to upload release assets via gh cli
+    env:
+      DotnetVersion: '10.0.102'
+      PUBLISH_OUTPUT_PATH: ${{ github.workspace }}/linux-publish
+      BUILD_CONFIGURATION: ${{ github.event_name == 'workflow_dispatch' && inputs.configuration || 'Release' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for nbgv versioning
+          submodules: true
+
+      # Set DOTNET_INSTALL_DIR so a workspace-local folder is used for the SDK.
+      # This is required for caching to work correctly on Linux.
+      - name: Set DOTNET_INSTALL_DIR
+        shell: bash
+        run: echo "DOTNET_INSTALL_DIR=$GITHUB_WORKSPACE/.dotnet" >> $GITHUB_ENV
+
+      - name: Cache .NET
+        id: cache-dotnet
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.dotnet
+          key: ${{ runner.os }}-dotnet-${{ env.DotnetVersion }}
+          restore-keys: |
+            ${{ runner.os }}-dotnet-${{ env.DotnetVersion }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DotnetVersion }}
+          include-prerelease: true
+
+      - uses: dotnet/nbgv@f088059084cb5d872e9d1a994433ca6440c2bf72 # v0.4.2
+        id: nbgv
+        with:
+          toolVersion: 3.6.139
+          setAllVars: true
+
+      - name: Build Gallery (Linux Desktop)
+        run: |
+          dotnet publish Uno.Gallery/Uno.Gallery.csproj \
+            -f net10.0-desktop \
+            -c ${{ env.BUILD_CONFIGURATION }} \
+            -p:TargetFrameworkOverride=net10.0-desktop \
+            "/p:PackageVersion=${{ steps.nbgv.outputs.SemVer2 }}" \
+            -o "${{ env.PUBLISH_OUTPUT_PATH }}" \
+            /bl:binlogs/linux-desktop.binlog
+
+      - name: Create Linux package archive
+        run: |
+          VERSION="${{ steps.nbgv.outputs.SemVer2 }}"
+          ARCHIVE_NAME="uno-gallery-linux-x64-${VERSION}.tar.gz"
+          tar -czf "${ARCHIVE_NAME}" -C "${{ env.PUBLISH_OUTPUT_PATH }}" .
+          echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
+
+      - name: Upload Linux package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-package
+          path: ${{ env.ARCHIVE_NAME }}
+
+      - name: Upload build logs artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-logs
+          path: binlogs
+          if-no-files-found: warn
+
+      - name: Upload package to Release
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" "${{ env.ARCHIVE_NAME }}"

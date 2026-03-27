@@ -71,7 +71,7 @@ jobs:
       - name: Create Linux package archive
         run: |
           VERSION="${{ steps.nbgv.outputs.SemVer2 }}"
-          ARCHIVE_NAME="uno-gallery-linux-x64-${VERSION}.tar.gz"
+          ARCHIVE_NAME="uno-gallery-linux-${VERSION}.tar.gz"
           tar -czf "${ARCHIVE_NAME}" -C "${{ env.PUBLISH_OUTPUT_PATH }}" .
           echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
 

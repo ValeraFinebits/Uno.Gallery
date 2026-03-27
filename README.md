@@ -33,7 +33,7 @@ The [Linux Package Publish](.github/workflows/linux-package-publish.yml) workflo
 - **Automatic** — runs automatically whenever a new GitHub Release is published (`release: [published]`).
 
 **What it produces:**
-- A `.tar.gz` archive (e.g. `uno-gallery-linux-x64-1.0.0.tar.gz`) containing the self-hosted application built for the `net10.0-desktop` target (Skia rendering).
+- A `.tar.gz` archive (e.g. `uno-gallery-linux-x64-1.0.0.tar.gz`) containing the framework-dependent application built for the `net10.0-desktop` target (Skia rendering).
 - The archive is uploaded as a GitHub Actions artifact named `linux-package`.
 - When triggered by a release event, the archive is also attached to the corresponding GitHub Release as a release asset.
 - Build binary logs are uploaded as the `build-logs` artifact to aid debugging.

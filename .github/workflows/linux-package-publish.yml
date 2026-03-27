@@ -64,6 +64,7 @@ jobs:
             -f net10.0-desktop \
             -c ${{ env.BUILD_CONFIGURATION }} \
             -p:TargetFrameworkOverride=net10.0-desktop \
+            -p:SelfContained=true \
             "/p:PackageVersion=${{ steps.nbgv.outputs.SemVer2 }}" \
             -o "${{ env.PUBLISH_OUTPUT_PATH }}" \
             /bl:binlogs/linux-desktop.binlog
